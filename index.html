@@ -10,6 +10,16 @@
         /* Ocultar el marcador nativo del details/summary */
         summary { list-style: none; }
         summary::-webkit-details-marker { display: none; }
+        
+        /* Ocultar las flechas de subir/bajar (spinners) en inputs numéricos */
+        input::-webkit-outer-spin-button,
+        input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        input[type=number] {
+            -moz-appearance: textfield;
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-900 font-sans antialiased">
