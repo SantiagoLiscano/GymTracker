@@ -26,9 +26,16 @@
         </header>
 
         <!-- Week Controls -->
-        <div class="flex justify-center gap-3 py-4 bg-gray-100 border-b border-gray-200 shadow-inner z-0">
-            <button id="btn-prev-week" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all shadow-sm">Semana Anterior</button>
-            <button id="btn-curr-week" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all shadow-sm">Semana Actual</button>
+        <div class="flex flex-col gap-2 py-3 bg-gray-100 border-b border-gray-200 shadow-inner z-0">
+            <div class="flex justify-center gap-3">
+                <button id="btn-prev-week" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all shadow-sm">Semana Anterior</button>
+                <button id="btn-curr-week" class="px-4 py-1.5 rounded-full text-sm font-medium transition-all shadow-sm">Semana Actual</button>
+            </div>
+            <div class="flex justify-center">
+                <button id="btn-copy-prev-week" class="text-xs font-bold text-blue-600 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors px-3 py-1.5 rounded-lg flex items-center gap-1.5 shadow-sm">
+                    <i class="fa-solid fa-copy"></i> Copiar ejercicios de la semana anterior
+                </button>
+            </div>
         </div>
 
         <!-- Days List -->
@@ -87,10 +94,6 @@
                         <div>
                             <label class="block text-xs font-bold text-gray-600 mb-1">Series</label>
                             <input type="number" id="add-ex-sets" placeholder="Ej: 4" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" required min="1">
-                        </div>
-                        <div>
-                            <label class="block text-xs font-bold text-gray-600 mb-1">Repeticiones por serie</label>
-                            <input type="number" id="add-ex-reps" placeholder="Ej: 10" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" required min="1">
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-gray-600 mb-1">Peso (Kg) - Opcional</label>
@@ -153,6 +156,9 @@
                     renderWeekNavigation(); 
                     renderDays(); 
                 });
+                document.getElementById('btn-copy-prev-week').addEventListener('click', () => {
+                    copyPreviousWeek();
+                });
 
                 // Listeners para los Modales
                 document.getElementById('btn-pool').addEventListener('click', () => {
@@ -193,7 +199,6 @@
                     if (!selectedExerciseForAdd) return;
 
                     const sets = parseInt(document.getElementById('add-ex-sets').value);
-                    const reps = parseInt(document.getElementById('add-ex-reps').value);
                     const weight = document.getElementById('add-ex-weight').value;
 
                     if (!routine[selectedDateForAdd]) {
@@ -204,7 +209,7 @@
                         id: selectedExerciseForAdd.id,
                         name: selectedExerciseForAdd.name,
                         sets: sets,
-                        reps: reps,
+                        reps: new Array(sets).fill(''),
                         weight: weight !== "" ? parseFloat(weight) : "",
                         instanceId: Date.now().toString() + Math.random().toString(36).substr(2, 5)
                     });
@@ -321,16 +326,40 @@
                         list.className = "space-y-2 mb-4";
                         dayExercises.forEach(ex => {
                             const li = document.createElement('li');
-                            li.className = "flex justify-between items-center bg-white p-3 rounded-xl border border-gray-100 shadow-sm";
+                            li.className = "flex justify-between items-start bg-white p-3 rounded-xl border border-gray-100 shadow-sm";
+                            
+                            const repsArray = Array.isArray(ex.reps) ? ex.reps : new Array(ex.sets).fill(ex.reps || '');
+                            
+                            let repsHtml = '';
+                            for (let s = 0; s < ex.sets; s++) {
+                                const val = repsArray[s] !== undefined ? repsArray[s] : '';
+                                repsHtml += `
+                                    <input 
+                                        type="number" 
+                                        placeholder="-" 
+                                        value="${val}" 
+                                        min="0" 
+                                        onchange="updateExerciseRep('${dateStr}', '${ex.instanceId}', ${s}, this.value)"
+                                        class="w-10 h-7 text-center text-xs font-semibold border border-gray-200 rounded-md focus:ring-1 focus:ring-blue-500 focus:border-blue-500 focus:outline-none bg-gray-50/50 focus:bg-white transition-colors"
+                                    />
+                                `;
+                            }
+
                             li.innerHTML = `
-                                <div class="flex items-center gap-3">
-                                    <div class="w-2 h-2 rounded-full bg-blue-500"></div>
-                                    <div>
-                                        <p class="text-sm font-bold text-gray-800">${ex.name}</p>
-                                        <p class="text-xs text-gray-500 font-medium mt-0.5">${ex.sets} series x ${ex.reps} reps ${ex.weight ? `<span class="ml-1 text-gray-400">|</span> <span class="text-gray-600 font-semibold ml-1">${ex.weight} kg</span>` : ''}</p>
+                                <div class="flex items-start gap-3 flex-1">
+                                    <div class="w-2 h-2 rounded-full bg-blue-500 mt-1.5 flex-shrink-0"></div>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-bold text-gray-800 truncate">${ex.name}</p>
+                                        <p class="text-xs text-gray-500 font-medium mt-0.5">
+                                            ${ex.sets} series ${ex.weight ? `<span class="ml-1 text-gray-400">|</span> <span class="text-gray-600 font-semibold ml-1">${ex.weight} kg</span>` : ''}
+                                        </p>
+                                        <div class="flex items-center gap-1.5 mt-2 flex-wrap">
+                                            <span class="text-[10px] text-gray-400 font-bold uppercase tracking-wider mr-1">Reps:</span>
+                                            ${repsHtml}
+                                        </div>
                                     </div>
                                 </div>
-                                <button onclick="deleteExerciseFromDay('${dateStr}', '${ex.instanceId}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors rounded-full hover:bg-red-50">
+                                <button onclick="deleteExerciseFromDay('${dateStr}', '${ex.instanceId}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors rounded-full hover:bg-red-50 flex-shrink-0">
                                     <i class="fa-solid fa-trash-can text-sm"></i>
                                 </button>
                             `;
@@ -405,6 +434,44 @@
                 pool = pool.filter(ex => ex.id !== poolId);
                 saveData();
                 renderPoolList();
+            };
+
+            window.updateExerciseRep = function(dateStr, instanceId, setIdx, val) {
+                if (!routine[dateStr]) return;
+                const ex = routine[dateStr].find(e => e.instanceId === instanceId);
+                if (!ex) return;
+                
+                if (!Array.isArray(ex.reps)) {
+                    ex.reps = new Array(ex.sets).fill(ex.reps || '');
+                }
+                
+                ex.reps[setIdx] = val !== "" ? parseInt(val) : "";
+                saveData();
+            };
+
+            window.copyPreviousWeek = function() {
+                if (!confirm("¿Seguro que deseas copiar los ejercicios de la semana anterior? Esto reemplazará los de esta semana.")) return;
+                
+                const targetDates = getWeekDates(weekOffset);
+                const sourceDates = getWeekDates(weekOffset - 1);
+                
+                targetDates.forEach((targetDate, i) => {
+                    const targetDateStr = formatDate(targetDate);
+                    const sourceDateStr = formatDate(sourceDates[i]);
+                    
+                    const sourceExercises = routine[sourceDateStr] || [];
+                    routine[targetDateStr] = sourceExercises.map(ex => ({
+                        id: ex.id,
+                        name: ex.name,
+                        sets: ex.sets,
+                        reps: Array.isArray(ex.reps) ? [...ex.reps] : new Array(ex.sets).fill(''),
+                        weight: ex.weight,
+                        instanceId: Date.now().toString() + Math.random().toString(36).substr(2, 5)
+                    }));
+                });
+                
+                saveData();
+                renderDays();
             };
 
             window.openAddModal = function(dateStr) {
