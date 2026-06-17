@@ -51,11 +51,6 @@
                 <form id="form-new-pool-ex" class="mb-6 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
                     <h3 class="text-sm font-bold text-gray-700 mb-3">Crear Nuevo Ejercicio</h3>
                     <input type="text" id="new-ex-name" placeholder="Nombre del ejercicio" class="w-full mb-3 p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
-                    <div class="grid grid-cols-3 gap-3 mb-4">
-                        <input type="number" id="new-ex-sets" placeholder="Series" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
-                        <input type="number" id="new-ex-reps" placeholder="Reps" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" required>
-                        <input type="number" step="0.1" id="new-ex-weight" placeholder="Kg (opc)" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    </div>
                     <button type="submit" class="w-full py-2.5 bg-gray-900 text-white rounded-lg text-sm font-semibold hover:bg-gray-800 transition-colors shadow-sm">
                         Añadir al Pool
                     </button>
@@ -78,7 +73,34 @@
                 </button>
             </div>
             <div class="p-5 overflow-y-auto flex-1 bg-gray-50/50">
-                <ul id="add-day-list" class="space-y-2"></ul>
+                <!-- Paso 1: Seleccionar del Pool -->
+                <div id="add-day-step-select">
+                    <ul id="add-day-list" class="space-y-2"></ul>
+                </div>
+                <!-- Paso 2: Configurar Series, Reps y Peso -->
+                <div id="add-day-step-config" class="hidden">
+                    <button id="btn-back-to-select" class="mb-4 text-xs font-bold text-gray-500 hover:text-blue-600 flex items-center gap-1 transition-colors">
+                        <i class="fa-solid fa-arrow-left"></i> Volver a la lista
+                    </button>
+                    <h3 id="selected-exercise-title" class="text-base font-bold text-gray-800 mb-4"></h3>
+                    <form id="form-add-to-day" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Series</label>
+                            <input type="number" id="add-ex-sets" placeholder="Ej: 4" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" required min="1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Repeticiones por serie</label>
+                            <input type="number" id="add-ex-reps" placeholder="Ej: 10" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" required min="1">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Peso (Kg) - Opcional</label>
+                            <input type="number" step="0.1" id="add-ex-weight" placeholder="Ej: 80" class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" min="0">
+                        </div>
+                        <button type="submit" class="w-full py-2.5 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 transition-colors shadow-sm mt-2">
+                            Añadir al Día
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </div>
@@ -90,15 +112,27 @@
             let routine = JSON.parse(localStorage.getItem('workout_routine')) || {};
             let weekOffset = 0; // 0 = Actual, -1 = Anterior
             let selectedDateForAdd = null;
+            let selectedExerciseForAdd = null;
 
             // Datos de prueba si el pool está vacío al iniciar por primera vez
             if (pool.length === 0) {
                 pool = [
-                    { id: 'ex1', name: 'Sentadilla Libre', sets: 4, reps: 10, weight: 80 },
-                    { id: 'ex2', name: 'Press de Banca', sets: 4, reps: 8, weight: 60 },
-                    { id: 'ex3', name: 'Dominadas', sets: 3, reps: 10, weight: '' }
+                    { id: 'ex1', name: 'Sentadilla Libre' },
+                    { id: 'ex2', name: 'Press de Banca' },
+                    { id: 'ex3', name: 'Dominadas' }
                 ];
                 saveData();
+            } else {
+                // Limpiar datos antiguos del pool si tenían sets/reps/weight para evitar inconsistencias
+                let modificado = false;
+                pool = pool.map(ex => {
+                    if (ex.sets !== undefined || ex.reps !== undefined || ex.weight !== undefined) {
+                        modificado = true;
+                        return { id: ex.id, name: ex.name };
+                    }
+                    return ex;
+                });
+                if (modificado) saveData();
             }
 
             // --- INICIALIZACIÓN ---
@@ -136,18 +170,48 @@
                 document.getElementById('form-new-pool-ex').addEventListener('submit', (e) => {
                     e.preventDefault();
                     const name = document.getElementById('new-ex-name').value;
-                    const sets = document.getElementById('new-ex-sets').value;
-                    const reps = document.getElementById('new-ex-reps').value;
-                    const weight = document.getElementById('new-ex-weight').value;
 
                     const newEx = {
                         id: Date.now().toString(),
-                        name, sets, reps, weight
+                        name
                     };
                     pool.push(newEx);
                     saveData();
                     renderPoolList();
                     e.target.reset();
+                });
+
+                // Botón volver en la selección de ejercicio del día
+                document.getElementById('btn-back-to-select').addEventListener('click', () => {
+                    document.getElementById('add-day-step-config').classList.add('hidden');
+                    document.getElementById('add-day-step-select').classList.remove('hidden');
+                });
+
+                // Formulario para configurar y añadir ejercicio al día
+                document.getElementById('form-add-to-day').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    if (!selectedExerciseForAdd) return;
+
+                    const sets = parseInt(document.getElementById('add-ex-sets').value);
+                    const reps = parseInt(document.getElementById('add-ex-reps').value);
+                    const weight = document.getElementById('add-ex-weight').value;
+
+                    if (!routine[selectedDateForAdd]) {
+                        routine[selectedDateForAdd] = [];
+                    }
+
+                    routine[selectedDateForAdd].push({
+                        id: selectedExerciseForAdd.id,
+                        name: selectedExerciseForAdd.name,
+                        sets: sets,
+                        reps: reps,
+                        weight: weight !== "" ? parseFloat(weight) : "",
+                        instanceId: Date.now().toString() + Math.random().toString(36).substr(2, 5)
+                    });
+
+                    saveData();
+                    renderDays();
+                    document.getElementById('add-day-modal').classList.add('hidden');
                 });
             }
 
@@ -318,7 +382,6 @@
                     li.innerHTML = `
                         <div>
                             <p class="text-sm font-bold text-gray-800">${ex.name}</p>
-                            <p class="text-xs text-gray-500 font-medium mt-0.5">${ex.sets}x${ex.reps} ${ex.weight ? `<span class="mx-1">•</span>${ex.weight}kg` : ''}</p>
                         </div>
                         <button onclick="deleteExerciseFromPool('${ex.id}')" class="text-gray-300 hover:text-red-500 p-2 transition-colors rounded-full hover:bg-red-50">
                             <i class="fa-solid fa-trash-can text-sm"></i>
@@ -346,6 +409,13 @@
 
             window.openAddModal = function(dateStr) {
                 selectedDateForAdd = dateStr;
+                selectedExerciseForAdd = null;
+                
+                // Restablecer vistas
+                document.getElementById('add-day-step-select').classList.remove('hidden');
+                document.getElementById('add-day-step-config').classList.add('hidden');
+                document.getElementById('form-add-to-day').reset();
+
                 const list = document.getElementById('add-day-list');
                 list.innerHTML = '';
                 
@@ -361,11 +431,10 @@
                     pool.forEach(ex => {
                         const li = document.createElement('li');
                         li.className = "flex justify-between items-center bg-white p-3.5 rounded-xl border border-gray-100 shadow-sm cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-all group";
-                        li.onclick = () => addExerciseToDay(ex);
+                        li.onclick = () => selectExerciseForDay(ex);
                         li.innerHTML = `
                             <div>
                                 <p class="text-sm font-bold text-gray-800 group-hover:text-blue-700">${ex.name}</p>
-                                <p class="text-xs text-gray-500 font-medium mt-0.5">${ex.sets}x${ex.reps} ${ex.weight ? `<span class="mx-1">•</span>${ex.weight}kg` : ''}</p>
                             </div>
                             <div class="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center group-hover:bg-blue-600 transition-colors">
                                 <i class="fa-solid fa-plus text-gray-400 group-hover:text-white text-sm"></i>
@@ -383,17 +452,11 @@
                 document.getElementById('pool-modal').classList.remove('hidden');
             };
 
-            window.addExerciseToDay = function(poolEx) {
-                if(!routine[selectedDateForAdd]) {
-                    routine[selectedDateForAdd] = [];
-                }
-                routine[selectedDateForAdd].push({
-                    ...poolEx,
-                    instanceId: Date.now().toString() + Math.random().toString(36).substr(2, 5) // ID único para cada vez que se agrega
-                });
-                saveData();
-                renderDays();
-                document.getElementById('add-day-modal').classList.add('hidden');
+            window.selectExerciseForDay = function(poolEx) {
+                selectedExerciseForAdd = poolEx;
+                document.getElementById('selected-exercise-title').innerText = poolEx.name;
+                document.getElementById('add-day-step-select').classList.add('hidden');
+                document.getElementById('add-day-step-config').classList.remove('hidden');
             };
         });
     </script>
