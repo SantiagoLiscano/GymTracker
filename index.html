@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Gym Tracker</title>
+    <link rel="manifest" href="manifest.json">
+    <style>
+        /* Estilos básicos para la estructura */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 20px; background: #121212; color: #fff; }
+        button { background: #007bff; color: white; border: none; padding: 10px 15px; border-radius: 5px; cursor: pointer; margin: 5px 0; }
+        input { padding: 10px; margin: 5px 0; border-radius: 5px; border: 1px solid #333; background: #222; color: white; }
+        .rep-box { width: 50px; text-align: center; margin-right: 5px; }
+        .card { background: #1e1e1e; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+    <div id="setup-screen" class="card hidden">
+        <h2>Configurar Rutina</h2>
+        <label>¿Cuántos días a la semana entrenas?</label>
+        <input type="number" id="dias-input" min="1" max="7">
+        <button onclick="guardarDias()">Empezar</button>
+    </div>
+
+    <div id="main-screen" class="hidden">
+        <div class="card">
+            <h2>Panel General</h2>
+            <button onclick="copiarSemanaAnterior()">Copiar semana anterior</button>
+            <button onclick="mostrarPool()">Ver Pool de Ejercicios</button>
+        </div>
+        
+        <div id="dias-container"></div>
+    </div>
+
+    <div id="add-exercise-screen" class="card hidden">
+        <h3 id="add-ex-title">Agregar Ejercicio</h3>
+        <input type="text" id="nuevo-ejercicio" placeholder="Nombre (ej. Zancadas)">
+        <select id="pool-select"></select>
+        <input type="number" id="series-input" placeholder="Número de series" min="1">
+        <button onclick="confirmarEjercicio()">Agregar</button>
+        <button onclick="cerrarModales()">Cancelar</button>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js');
+        }
+    </script>
+</body>
+</html>
